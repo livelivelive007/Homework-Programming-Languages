@@ -44,10 +44,12 @@ breakLine num linea = foldl (\x y ->let (a,b) = x
                                         then (w, [])
                                         else (a,b++[y])) ([],[]) linea
 --
-mergers :: [String] -> [([Char], [Char])]
+--mergers ["co","nt","ro","la"]
+mergers :: [String] -> [(Token,Token)]
 mergers w = if length w == 1 then [] else 
-             if length w == 2 then [mer1 w] else 
-              if length w == 3 then [mer1 w] ++ [mer2 w] else [mer1 w] ++ [mer2 w] ++ [mer3 w]
+             if length w == 2 then [convertTypeCharToToken (mer1 w)] else 
+              if length w == 3 then [convertTypeCharToToken (mer1 w)] ++ [convertTypeCharToToken (mer2 w)] 
+              else [convertTypeCharToToken (mer1 w)] ++ [convertTypeCharToToken (mer2 w)] ++ [convertTypeCharToToken (mer3 w)]
 
 mer1 :: [String] -> ([Char],[Char])
 mer1 w = foldl (\x y -> let (a,b) = x in if a == [] then (y,b) else 
@@ -68,24 +70,53 @@ mer3 w = foldl (\x y -> let (a,b) = x in if a == [] then (y,b) else
 --hyphenate [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"]),(Word "presente",["pre","sen","te"])] (Word "controla")
 --[(HypWord "con",Word "trola"),(HypWord "contro",Word "la")]
 
---hyphenate enHyp (Word "futuro...")
+--hyphenate [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"]),(Word "presente",["pre","sen","te"])] (Word "futuro...")
 --[(HypWord "fu",Word "turo..."),(HypWord "futu",Word "ro...")]
 
 type HypMap = [(Token,[String])]
-hyphenate :: HypMap -> Token -> [([Char], [Char])]
-hyphenate q w = case lookup w q of
+hyphenate :: HypMap -> Token -> [(Token,Token)]
+hyphenate q w = let ft = T.unpack (T.takeWhileEnd (=='.') (T.pack $ convertTokenString w)) 
+                in if (last (convertTokenString w)) == '.' then case lookup (Word $ T.unpack $ T.dropWhileEnd (=='.') $ T.pack $ convertTokenString w) q of
+                     Nothing -> [] --Porque entra aqui? Si realmente le quita los puntos al final
+                     Just valor -> addPoints ft (mergers valor)
+                    else case lookup w q of
                      Nothing -> []
-                     Just valor -> mergers valor 
---h
---lineBreaks :: HypMap -> Int -> Line -> [(Line,Line)]
---lineBreaks q num w = [([],[])]
+                     Just valor -> mergers valor
 
---lineBreaks enHyp 17 [Word "Aquel",Word "que",Word "controla"]
+convertTokenString :: Token -> String
+convertTokenString (Word w) = w++""
+convertTokenString (HypWord w) = w++""
+convertTokenString (Blank) = ""
+
+addPoints :: String -> [(Token,Token)] -> [(Token,Token)]
+addPoints ft w = map (\(x,y) -> (x,string22line $ (convertTokenString (y))++ft)) w
+
+convertTypeCharToToken :: ([Char],[Char]) -> (Token, Token)
+convertTypeCharToToken w = head $ map (\(x,y) -> (HypWord x, Word y)) [w]
+
+string22line :: String -> Token
+string22line w = Word w
+
+--transf :: Token -> Token -> Token
+--transf w e = w++e
+
+--h
+--lineBreaks [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 17 [Word "Aquel",Word "que",Word "controla"]
 --[([Word "Aquel",Word "que"], [Word "controla"]),
 -- ([Word "Aquel",Word "que",HypWord "con"], [Word "trola"]),
 -- ([Word "Aquel",Word "que",HypWord "contro"], [Word "la"])]
 
 --lineBreaks enHyp 12 [Word "Aquel"] ⇒ [([Word "Aquel"],[])]
+
+lineBreaks :: HypMap -> Int -> Line -> [(Line, Line)]
+lineBreaks q num w = let combi = hyphenate q (last w)
+                         cont = 0
+                        in
+                        map (\(x,y) -> if cont == 0 
+                            then breakLine num w
+                            else breakLine num ((reverse $ drop 1 $ reverse w)++x++y)) combi
+
+
 
 
 --i
