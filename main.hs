@@ -109,15 +109,11 @@ string22line w = Word w
 --lineBreaks enHyp 12 [Word "Aquel"] ⇒ [([Word "Aquel"],[])]
 
 lineBreaks :: HypMap -> Int -> Line -> [(Line, Line)]
-lineBreaks q num w = let combi = hyphenate q (last w)
-                         cont = 0
+lineBreaks q num w = ([breakLine num w])++(let combi = hyphenate q (last w)
                         in
-                        map (\(x,y) -> if cont == 0 
-                            then breakLine num w
-                            else breakLine num ((reverse $ drop 1 $ reverse w)++x++y)) combi
-
-
-
+                        map (\(HypWord x,Word y) -> let tuff = [HypWord x,Word y]
+                                                        lista = ((reverse $ drop 1 $ reverse w)++tuff) 
+                                                        in breakLine num lista) combi)
 
 --i
 --insertBlanks
