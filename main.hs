@@ -116,14 +116,80 @@ lineBreaks q num w = ([breakLine num w])++(let combi = hyphenate q (last w)
                                                         in breakLine num lista) combi)
 
 --i
---insertBlanks
+--insertBlanks 3 [Word "hola", Word "mundo", Word "cruel"]
+-- ⇒[Word "hola", Blank,Blank, Word "mundo", Blank, Word "cruel"]
+--insertBlanks 5 [Word "hola", Word "mundo", Word "cruel"]
+-- ⇒ [Word "hola", Blank,Blank,Blank, Word "mundo", Blank,Blank, Word "cruel"]
+--insertBlanks 5 [Word "hola", Word "mundo", Word "cruel", Word "adios"]
+-- ⇒ [Word "hola",Blank,Blank, Word "mundo", Blank,Blank,Word "cruel", Blank, Word "adios"]
+
+insertBlanks :: Int -> Line -> Line
+insertBlanks num [] = []
+insertBlanks num w = let largo = length w
+                         totalLinea = (-1)+largo
+                        in 
+                        if largo == 1 
+                            then w 
+                            else getLineReturn (foldl (\x y -> let (a,b,c) = x 
+                                                    in 
+                                                    if c < largo && b /= 0
+                                                        then ((convertStringToken a y),b-1,c+1)
+                                                        else ((convertStringToken2 a y),b,1) ) ([],num,1) w)
+
+getLineReturn :: (Line, Int, Int) -> Line
+getLineReturn w = head $ map (\(x,y,z) -> x) [w]
+
+convertStringToken :: [Token] -> Token -> Line
+convertStringToken lista w = lista++[w]++[Blank]
+
+convertStringToken2 :: [Token] -> Token -> Line
+convertStringToken2 lista w = lista++[w]
 
 --j
---separarYalinear
+--separarYalinear 20 "NOSEPARAR" "NOAJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
+ -- 12345678901234567890
+-- [ "Quien controla el",
+-- "pasado controla el",
+-- "futuro. Quien",
+-- "controla el presente",
+-- "controla el pasado."]
+
+separarYalinear :: Int -> String -> String -> String -> [String]
+separarYalinear num noseparar noajustar w = if noseparar == "NOSEPARAR" && noajustar == "NOAJUSTAR"
+                                                then getLinePrimeraCorrida(breakLine num (string2line w)) num
+                                                else []
+
+getLinePrimeraCorrida :: (Line,Line) -> Int-> [String]
+getLinePrimeraCorrida w n = let (a,b) = w in if b /= []
+                                                then [line2string a]++getLinePrimeraCorrida(breakLine n b) n
+                                                else [line2string a]
+
+--separarYalinear2  [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 20 "SEPARAR" "NOAJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
+ -- 12345678901234567890
+-- [ "Quien controla el",
+-- "pasado controla el",
+-- "futuro. Quien con-",
+-- "trola el presente",
+-- "controla el pasado."]
 
 
+separarYalinear2 :: HypMap -> Int -> String -> String -> String -> [String]
+separarYalinear2 hm num noseparar noajustar w = if noseparar == "SEPARAR" && noajustar == "NOAJUSTAR"
+                                                then getLinePrimeraCorrida2 hm (breakLine (num+2) (string2line w)) num
+                                                else []
 
 
+getLinePrimeraCorrida2 :: HypMap -> (Line,Line) -> Int-> [String]
+getLinePrimeraCorrida2 h w n = let (a,b) = w in if b /= []
+                                                then let [(x,y)] = (lineBreaks h n a) in [line2string x]++getLinePrimeraCorrida2 h (breakLine n b) n
+                                                else [line2string a]
+
+lineBreaks2 :: HypMap -> Int -> Line -> [(Line, Line)]
+lineBreaks2 q num w = ([]++let combi = hyphenate q (last w)
+                        in
+                        map (\(HypWord x,Word y) -> let tuff = [HypWord x,Word y]
+                                                        lista = ((reverse $ drop 1 $ reverse w)++tuff) 
+                                                        in breakLine num lista) combi)
 
 main = do
     
