@@ -125,19 +125,27 @@ lineBreaks q num w = ([breakLine num w])++(let combi = hyphenate q (last w)
 
 insertBlanks :: Int -> Line -> Line
 insertBlanks num [] = []
-insertBlanks num w = let largo = length w
-                         totalLinea = (-1)+largo
-                        in 
-                        if largo == 1 
-                            then w 
-                            else getLineReturn (foldl (\x y -> let (a,b,c) = x 
-                                                    in 
-                                                    if c < largo && b /= 0
-                                                        then ((convertStringToken a y),b-1,c+1)
-                                                        else ((convertStringToken2 a y),b,1) ) ([],num,1) w)
+insertBlanks num w = let largo = length w in if largo == 1 || (largo == 2 && (last w) == Blank) || (largo == 3 && (last w) == Blank)
+                            then w
+                            else getLineaReturn (getIlera num w largo 1) largo 
 
-getLineReturn :: (Line, Int, Int) -> Line
-getLineReturn w = head $ map (\(x,y,z) -> x) [w]
+getIlera :: Int -> Line -> Int -> Int -> (Line, Int, Int)
+getIlera num w largo z = foldl (\x y -> let (a,b,c) = x 
+                    in 
+                    if c < largo && b /= 0
+                        then if y /= Blank 
+                                then ((convertStringToken a y),(-1)+b,c+1)
+                                else ((convertStringToken0 a y),b,c)
+                        else ((convertStringToken2 a y),b,1) ) ([],num,z) w
+
+getLineaReturn :: (Line, Int, Int) -> Int -> Line
+getLineaReturn w largo = head $ map (\(x,y,z) -> getLinea (getIlera y x largo z)) [w]
+
+getLinea  :: (Line, Int, Int) -> Line
+getLinea w = head $ map (\(x,y,z) -> x) [w]
+
+convertStringToken0 :: [Token] -> Token -> Line
+convertStringToken0 lista w = lista++[w]
 
 convertStringToken :: [Token] -> Token -> Line
 convertStringToken lista w = lista++[w]++[Blank]
@@ -172,20 +180,33 @@ getLinePrimeraCorrida w n = let (a,b) = w in if b /= []
 -- "trola el presente",
 -- "controla el pasado."]
 
+-- [([HypWord "con"], [Word "trola"]), ([HypWord "contro"], [Word "la"])]
 
 separarYalinear2 :: HypMap -> Int -> String -> String -> String -> [String]
 separarYalinear2 hm num noseparar noajustar w = if noseparar == "SEPARAR" && noajustar == "NOAJUSTAR"
-                                                then getLinePrimeraCorrida2 hm (breakLine (num+2) (string2line w)) num
+                                                then getResultFinal hm num (getLinePrimeraCorrida2 (breakLine (num) (string2line w)) num)
                                                 else []
 
+getResultFinal :: HypMap -> Int -> [String] -> [String]
+getResultFinal h num w  = foldl (\x y -> if x == [] 
+                                    then y
+                                    else (init x)++line2string (getCadena y num (last x) (tail (lineBreaks2 h num ([Word (head y)])))) ) [] [w]
 
-getLinePrimeraCorrida2 :: HypMap -> (Line,Line) -> Int-> [String]
-getLinePrimeraCorrida2 h w n = let (a,b) = w in if b /= []
-                                                then let [(x,y)] = (lineBreaks h n a) in [line2string x]++getLinePrimeraCorrida2 h (breakLine n b) n
+getCadena :: String -> Int -> String -> [(Line, Line)] -> Line
+getCadena xs largolista w cadena = head (foldr (\x y -> let (a,b) = y 
+                                                            largototal = (length w)+(length a)+1
+                                                        in
+                                                        if largototal > largolista
+                                                            then []
+                                                            else a++y++[b++(tail (words xs))] ) [] cadena)
+
+getLinePrimeraCorrida2 :: (Line,Line) -> Int-> [String]
+getLinePrimeraCorrida2 w n = let (a,b) = w in if b /= []
+                                                then [line2string a]++getLinePrimeraCorrida2 (breakLine n b) n
                                                 else [line2string a]
 
 lineBreaks2 :: HypMap -> Int -> Line -> [(Line, Line)]
-lineBreaks2 q num w = ([]++let combi = hyphenate q (last w)
+lineBreaks2 q num w = ([breakLine num w])++(let combi = hyphenate q (last w)
                         in
                         map (\(HypWord x,Word y) -> let tuff = [HypWord x,Word y]
                                                         lista = ((reverse $ drop 1 $ reverse w)++tuff) 
