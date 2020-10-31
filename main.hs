@@ -188,17 +188,31 @@ separarYalinear2 hm num noseparar noajustar w = if noseparar == "SEPARAR" && noa
                                                 else []
 
 getResultFinal :: HypMap -> Int -> [String] -> [String]
-getResultFinal h num w  = foldl (\x y -> if x == [] 
-                                    then y
-                                    else (init x)++line2string (getCadena y num (last x) (tail (lineBreaks2 h num ([Word (head y)])))) ) [] [w]
+getResultFinal h num w  = [foldl (\x y -> let palabra1 = (line2string (head (getCadena y num (last (words x)) (tail (lineBreaks2 h num ([Word (head (words y))]))))))
+                                              palabra2 = (line2string (last (getCadena y num (last (words x)) (tail (lineBreaks2 h num ([Word (head (words y))]))))))
+                                              ultima = (last [x])
+                                              largototal = (length ultima)+(length palabra1)
+                                             in
+                                             if x == [] 
+                                                then y
+                                                else if largototal > num
+                                                    then x++y 
+                                                    else combinarCadenas ((init x)++ultima++palabra1):combinarCadenas(palabra2++(tail y)):[] ) [] w]
 
-getCadena :: String -> Int -> String -> [(Line, Line)] -> Line
-getCadena xs largolista w cadena = head (foldr (\x y -> let (a,b) = y 
-                                                            largototal = (length w)+(length a)+1
+combinarCadenas :: [Char] -> [String]
+combinarCadenas w = map (\x xs -> x:xs ) w
+
+getCadena :: String -> Int -> String -> [(Line, Line)] -> [Line]
+getCadena xs num w cadena = convertCadenaArreglo (foldl (\x y -> let (a,b) = y 
+                                                                     largototal = (length w)+(length a)+1
+                                                                     (m,n,k) = x
                                                         in
-                                                        if largototal > largolista
-                                                            then []
-                                                            else a++y++[b++(tail (words xs))] ) [] cadena)
+                                                        if largototal < num && k == 0
+                                                            then (a,b,k+1)
+                                                            else x ) ([],[],0) cadena)
+
+convertCadenaArreglo :: (Line,Line,Int) -> [Line]
+convertCadenaArreglo w = map (\(x,y,z) -> x++y) [w]
 
 getLinePrimeraCorrida2 :: (Line,Line) -> Int-> [String]
 getLinePrimeraCorrida2 w n = let (a,b) = w in if b /= []
