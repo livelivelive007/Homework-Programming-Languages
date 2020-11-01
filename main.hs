@@ -174,13 +174,17 @@ getLinePrimeraCorrida w n = let (a,b) = w in if b /= []
 
 --separarYalinear2  [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 20 "SEPARAR" "NOAJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
  -- 12345678901234567890
--- [ "Quien controla el",
--- "pasado controla el",
--- "futuro. Quien con-",
--- "trola el presente",
--- "controla el pasado."]
+-- ["Quien controla el","pasado controla el","futuro. Quien con-","trola el presente","controla el pasado."]
+
 
 -- [([HypWord "con"], [Word "trola"]), ([HypWord "contro"], [Word "la"])]
+
+--y = ["controla el presente"]
+--x = ["Quien controla el","pasado controla el","futuro. Quien"]
+--h = [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])]
+--head (getCadena 20 (last x) (tail (lineBreaks2 h 20 ([Word (head (words (head y)))]))))
+
+--[HypWord "con", Word "trola"]
 
 separarYalinear2 :: HypMap -> Int -> String -> String -> String -> [String]
 separarYalinear2 hm num noseparar noajustar w = if noseparar == "SEPARAR" && noajustar == "NOAJUSTAR"
@@ -188,27 +192,29 @@ separarYalinear2 hm num noseparar noajustar w = if noseparar == "SEPARAR" && noa
                                                 else []
 
 getResultFinal :: HypMap -> Int -> [String] -> [String]
-getResultFinal h num w  = [foldl (\x y -> let palabra1 = (line2string (head (getCadena y num (last (words x)) (tail (lineBreaks2 h num ([Word (head (words y))]))))))
-                                              palabra2 = (line2string (last (getCadena y num (last (words x)) (tail (lineBreaks2 h num ([Word (head (words y))]))))))
-                                              ultima = (last [x])
-                                              largototal = (length ultima)+(length palabra1)
-                                             in
-                                             if x == [] 
-                                                then y
-                                                else if largototal > num
-                                                    then x++y 
-                                                    else combinarCadenas ((init x)++ultima++palabra1):combinarCadenas(palabra2++(tail y)):[] ) [] w]
+getResultFinal h num w  = foldl (\x y -> if x == [] 
+    then x++y
+    else let ultima = last x
+             palabra1 = (line2string [(head (head (getCadena num ultima (tail (lineBreaks2 h num ([Word (head (words (head y)))]))))))])
+             palabra2 = (line2string [(last (head (getCadena num ultima (tail (lineBreaks2 h num ([Word (head (words (head y)))]))))))])
+             largototal = (length ultima)+(length palabra1)
+            in
+            if largototal > num
+                then x++y
+                else ((init (x))++[ultima++" "++palabra1])++[(foldl (\o p -> if o /= [] then  o++" "++p else p) [] (tail (words (head y))))] ) [] w
 
-combinarCadenas :: [Char] -> [String]
-combinarCadenas w = map (\x xs -> x:xs ) w
+obtenerDatoFinal :: [String] -> String -> [String]
+obtenerDatoFinal w1 w2 = w1++[w2]
 
-getCadena :: String -> Int -> String -> [(Line, Line)] -> [Line]
-getCadena xs num w cadena = convertCadenaArreglo (foldl (\x y -> let (a,b) = y 
-                                                                     largototal = (length w)+(length a)+1
-                                                                     (m,n,k) = x
+getCadena :: Int -> String -> [(Line, Line)] -> [Line]
+getCadena num w cadena = convertCadenaArreglo (foldl (\x y -> let (a,b) = y 
+                                                                  ph = init a 
+                                                                  pw = tail a
+                                                                  largototal = (length w)+(length ph)+1
+                                                                  (m,n,k) = x
                                                         in
                                                         if largototal < num && k == 0
-                                                            then (a,b,k+1)
+                                                            then (ph,pw,k+1)
                                                             else x ) ([],[],0) cadena)
 
 convertCadenaArreglo :: (Line,Line,Int) -> [Line]
@@ -225,6 +231,24 @@ lineBreaks2 q num w = ([breakLine num w])++(let combi = hyphenate q (last w)
                         map (\(HypWord x,Word y) -> let tuff = [HypWord x,Word y]
                                                         lista = ((reverse $ drop 1 $ reverse w)++tuff) 
                                                         in breakLine num lista) combi)
+
+
+--[(foldl (\x y -> x++y) [] w1)++w2]
+
+--(init x)++[(ultima++" "++palabra1)]++[(head (tail (words (head y))))]
+--ultima++".."++palabra1++".."++palabra2++".."++largototal
+
+--foldl (\x y -> x++".."++y) [] ["Quien controla el pasado","controla el futuro. Quien","controla el presente controla","el pasado."]
+
+--combinarCadenas ((init x)++ultima++palabra1):combinarCadenas(palabra2++(tail y)):[]
+--combinarCadenas :: [Char] -> [String]
+--combinarCadenas w = map (\x xs -> x:xs ) w
+
+--w = "futuro. Quien"
+--cadena = [([HypWord "con",Word "trola"],[]),([HypWord "contro",Word "la"],[])]
+--foldl (\x y -> let (a,b)=(y) ph=(init a) pw=(tail a) largototal=((length w)+(length ph)+1) (m,n,k)=(x) in if largototal<=num && k==0 then (ph,pw,k+1) else x ) ([],[],0) cadena
+
+
 
 main = do
     
