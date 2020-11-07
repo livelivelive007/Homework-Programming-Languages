@@ -1,4 +1,7 @@
 import qualified Data.Text as T
+--import Prelude hiding (null, lookup, filter)
+--import Data.Map hiding (map, foldl, drop)
+--import System.IO
 
 type Line = [Token]
 data Token = Word String | Blank | HypWord String
@@ -35,6 +38,8 @@ tokenLength2 (Word w) = 1 + length w
 tokenLength2 (HypWord w) = 2 + length w
 tokenLength2 (Blank) = 1
 --
+--breakLine 9 [Word "Aquel",Word "que",Word "controla"]
+--([Word "Aquel",Word "que"],[Word "controla"])
 breakLine :: Int -> Line -> (Line, Line)
 breakLine num [] = ([],[])
 breakLine num linea = foldl (\x y ->let (a,b) = x
@@ -125,33 +130,39 @@ lineBreaks q num w = ([breakLine num w])++(let combi = hyphenate q (last w)
 
 insertBlanks :: Int -> Line -> Line
 insertBlanks num [] = []
-insertBlanks num w = let largo = length w in if largo == 1 || (largo == 2 && (last w) == Blank) || (largo == 3 && (last w) == Blank)
-                            then w
-                            else getLineaReturn (getIlera num w largo 1) largo 
+insertBlanks num w = let largo = length w
+                        in
+                        getLinea (getLineaReturn num w 1 largo)
 
 getIlera :: Int -> Line -> Int -> Int -> (Line, Int, Int)
-getIlera num w largo z = foldl (\x y -> let (a,b,c) = x 
-                    in 
-                    if c < largo && b /= 0
-                        then if y /= Blank 
-                                then ((convertStringToken a y),(-1)+b,c+1)
-                                else ((convertStringToken0 a y),b,c)
-                        else ((convertStringToken2 a y),b,1) ) ([],num,z) w
-
-getLineaReturn :: (Line, Int, Int) -> Int -> Line
-getLineaReturn w largo = head $ map (\(x,y,z) -> getLinea (getIlera y x largo z)) [w]
-
+getIlera num w z largoriginal = let largo = length w 
+                        in 
+                        foldl (\x y -> let (a,b,c) = x 
+                                        in 
+                                        if c < largo && b /= 0
+                                            then if y /= Blank && largoriginal /= c
+                                                    then ((convertStringToken a y),(-1)+b,c+1)
+                                                    else ((convertStringToken0 a y),b,c)
+                                            else ((convertStringToken0 a y),b,1) ) ([],num,z) w
+                                        
+getLineaReturn :: Int -> Line -> Int -> Int -> (Line, Int, Int)
+getLineaReturn num w cont largoriginal = let (x,y,z) = getIlera num w cont largoriginal
+                            in
+                            if num == 0 
+                                then (w,0,0)
+                                else getLineaReturn y x cont largoriginal
+--getIlera num w cont
 getLinea  :: (Line, Int, Int) -> Line
-getLinea w = head $ map (\(x,y,z) -> x) [w]
+getLinea w = head $ map (\(x,y,z) -> x ) [w]
+
+getLinea2  :: (Line, Int, Int) -> Line
+getLinea2 w = head $ map (\(x,y,z) -> x ) [w]
 
 convertStringToken0 :: [Token] -> Token -> Line
 convertStringToken0 lista w = lista++[w]
 
 convertStringToken :: [Token] -> Token -> Line
 convertStringToken lista w = lista++[w]++[Blank]
-
-convertStringToken2 :: [Token] -> Token -> Line
-convertStringToken2 lista w = lista++[w]
 
 --j
 --separarYalinear 20 "NOSEPARAR" "NOAJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
@@ -172,48 +183,143 @@ getLinePrimeraCorrida w n = let (a,b) = w in if b /= []
                                                 then [line2string a]++getLinePrimeraCorrida(breakLine n b) n
                                                 else [line2string a]
 
--- [([HypWord "con"], [Word "trola"]), ([HypWord "contro"], [Word "la"])]
-
---y = ["controla el presente"]
---x = ["Quien controla el","pasado controla el","futuro. Quien"]
---h = [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])]
---head (getCadena 20 (last x) (tail (lineBreaks2 h 20 ([Word (head (words (head y)))]))))
-
---[HypWord "con", Word "trola"]
-
---ultima = "futuro. Quien"
---palabra1 = con
---palabra2 = trola
-
---a = [ "Quien controla el","pasado controla el","futuro. Quien","controla el presente","controla el pasado."]
-
---y="controla el presente"
-
---separarYalinear2 [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 20 "SEPARAR" "NOAJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
+----------------------------------------------------------
+--separarYalinear3 20 "NOSEPARAR" "AJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
  -- 12345678901234567890
+-- ["Quien   controla  el",
+-- "pasado controla el",
+-- "futuro. Quien",
+-- "controla el presente",
+-- "controla el pasado."]
+
+--["Quien   controla  el",
+-- "pasado  controla  el",
+-- "futuro.        Quien",
+-- "controla el presente",
+-- "controla  el pasado."]
+separarYalinear3 :: Int -> String -> String -> String -> [String]
+separarYalinear3 num noseparar noajustar w = if noseparar == "NOSEPARAR" && noajustar == "AJUSTAR"
+                                                then getLinePrimeraCorrida3(breakLine num (string2line w)) num
+                                                else []
+
+getLinePrimeraCorrida3 :: (Line,Line) -> Int-> [String]
+getLinePrimeraCorrida3 w n = let (a,b) = w 
+                                 largo = length (line2string a)
+                                 dato = n - largo
+                                in if b /= []
+                                    then if dato /= 0
+                                        then [line2string (insertBlanks dato a)]++getLinePrimeraCorrida3(breakLine n b) n
+                                        else [line2string a]++getLinePrimeraCorrida3(breakLine n b) n
+                                    else if dato /= 0
+                                        then [line2string (insertBlanks dato a)]
+                                        else [line2string a]
+
+-------------------------------------------------
+--separarYalinear2 [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 20 "SEPARAR" "NOAJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
 -- ["Quien controla el","pasado controla el","futuro. Quien con-","trola el presente","controla el pasado."]
 
---head $ getFirtsWord h num y
---HypWord "con"
---line2string [head $ getFirtsWord h num y]
---"con-"
+ -- 12345678901234567890
+-- [ "Quien controla el",
+-- "pasado controla el",
+-- "futuro. Quien",
+-- "controla el presente",
+-- "controla el pasado."]
 
+--["Quien controla el",
+--"pasado controla el",
+--"futuro. Quien con-",
+--"trola el presente",
+--"controla el pasado."]
 
 separarYalinear2 :: HypMap -> Int -> String -> String -> String -> [String]
 separarYalinear2 hm num noseparar noajustar w = if noseparar == "SEPARAR" && noajustar == "NOAJUSTAR"
-                                                then getResultFinal hm num (getLinePrimeraCorrida2 (breakLine (num) (string2line w)) num)
+                                                then getResultFinal hm num (getLinePrimeraCorrida (breakLine (num) (string2line w)) num)
                                                 else []
 
 getResultFinal :: HypMap -> Int -> [String] -> [String]
 getResultFinal h num w  = foldl (\x y -> if x == [] 
     then [y]
-    else let lastone = last y
-            in x++[y]) [] w
+    else let ultima = last x
+             palabra1 = printWord y h num
+             palabra2 = printWord2 y h num
+             largototal = (length ultima)+(length palabra1)
+            in
+            if largototal > num
+                then x++[y]
+                else if palabra1 /= ""
+                    then (init (x))++[ultima++" "++palabra1]++[palabra2++" "++getWordUnion y] 
+                    else x++[y] ) [] w
 
--- lista = line2string (convertirListaFull lastone)
---              lista2 = line2string (convertirListaFull2 (map (\a -> spaces2cadena a) (init lista) ))
+getWordUnion :: String -> [Char]
+getWordUnion w = foldl (\o p -> if o /= [] then  o++" "++p else p) [] (tail (words w))
+
+printWord :: String -> HypMap -> Int -> String 
+printWord w h num  = let fword = getFirtsWord h num w 
+                    in 
+                    if fword /= []
+                        then line2string [head (head (fword))]
+                        else ""
+
+printWord2 :: String -> HypMap -> Int -> String 
+printWord2 w h num  = let fword = getFirtsWord h num w 
+                    in 
+                    if fword /= []
+                        then line2string [last (head (fword))]
+                        else ""
+
+getFirtsWord :: HypMap -> Int -> String -> [Line]
+getFirtsWord h num w = let palabra = tail (lineBreaks h num ([Word (head (words w))]))
+                        in  
+                        if palabra /= []
+                            then map (\(x,y) -> x) [(head (palabra))]
+                            else []
+
+-----------------------------------------------------------------------------
+--separarYalinear4 [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 20 "SEPARAR" "AJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
+--["Quien   controla  el",
+-- "pasado  controla  el",
+-- "futuro.  Quien  con-",
+-- "trola   el  presente",
+-- "controla  el pasado."]
+
+separarYalinear4 :: HypMap -> Int -> String -> String -> String -> [String]
+separarYalinear4 hm num noseparar noajustar w = let texto = foldl (\x y -> if x == "" 
+                                                                                then y
+                                                                                else x++" "++y) "" (getResultFinal hm num (getLinePrimeraCorrida (breakLine (num) (string2line w)) num))
+                                                in
+                                                if noseparar == "SEPARAR" && noajustar == "AJUSTAR"
+                                                    then getLinePrimeraCorrida3(breakLine num (string2line texto)) num
+                                                    else []
+
+getResultFinal2 :: HypMap -> Int -> [String] -> [String]
+getResultFinal2 h num w  = foldl (\x y -> if x == [] 
+    then [y]
+    else let ultima = last x
+             palabra1 = printWord y h num
+             palabra2 = printWord2 y h num
+             largototal = (length ultima)+(length palabra1)
+            in
+            if largototal > num
+                then x++[y]
+                else if palabra1 /= ""
+                    then (init (x))++[ultima++" "++palabra1]++[palabra2++" "++getWordUnion y] 
+                    else x++[y] ) [] w
+
+getLinePrimeraCorrida4 :: (Line,Line) -> Int-> [String]
+getLinePrimeraCorrida4 w n = let (a,b) = w 
+                                 largo = length (line2string a)
+                                 dato = n - largo
+                                in if b /= []
+                                    then if dato /= 0
+                                        then [line2string (insertBlanks dato a)]++getLinePrimeraCorrida4(breakLine n b) n
+                                        else [line2string a]++getLinePrimeraCorrida4(breakLine n b) n
+                                    else if dato /= 0
+                                        then [line2string (insertBlanks dato a)]
+                                        else [line2string a]
 
 
+
+-----------------------------------------------------------------------------
 
 
 
@@ -224,40 +330,6 @@ convertirListaFull2 :: [String] -> Line
 convertirListaFull2 w = head (map (\x -> string2line x) w)
 
 
-
-
-
-
-
--- foldl (\x y -> if x == [] then [y] else x++[(printWord y h num)] ) [] a
-
-getWordUnion :: String -> [Char]
-getWordUnion w = foldl (\o p -> if o /= [] then  o++" "++p else p) [] (tail (words w))
-
-printWord :: String -> HypMap -> Int -> String 
-printWord w h num  = line2string [head (getFirtsWord h num w)]
-
-printWord2 :: String -> HypMap -> Int -> String 
-printWord2 w h num  = line2string [last (getFirtsWord h num w)]
-
-getFirtsWord :: HypMap -> Int -> String -> Line
-getFirtsWord h num w = head (map (\(x,y) -> x) [(head (tail (lineBreaks2 h num ([Word (head (words w))]))))])
-
--- [([HypWord "con",Word "trola"],[]),([HypWord "contro",Word "la"],[])]
---getFirtsWord h num w ultima = head (getCadena num ultima (tail (lineBreaks2 h num ([Word (head (words w))]))))
-
-getLinePrimeraCorrida2 :: (Line,Line) -> Int-> [String]
-getLinePrimeraCorrida2 w n = let (a,b) = w in if b /= []
-                                                then [line2string a]++getLinePrimeraCorrida2 (breakLine n b) n
-                                                else [line2string a]
-
-lineBreaks2 :: HypMap -> Int -> Line -> [(Line, Line)]
-lineBreaks2 q num w = ([breakLine num w])++(let combi = hyphenate q (last w)
-                        in
-                        map (\(HypWord x,Word y) -> let tuff = [HypWord x,Word y]
-                                                        lista = ((reverse $ drop 1 $ reverse w)++tuff) 
-                                                        in breakLine num lista) combi)
-          
 getWord1 :: [Token] -> String 
 getWord1 w = line2string [head w]
 
@@ -281,6 +353,40 @@ getCadena num w cadena = convertCadenaArreglo (foldl (\x y -> let (a,b) = y
 convertCadenaArreglo :: (Line,Line,Int) -> [Line]
 convertCadenaArreglo w = map (\(x,y,z) -> x++y) [w]
 
+--(init (x))++[ultima++" "++palabra1]++[palabra2++" "++getWordUnion y]
+
+-- foldl (\x y -> if x == [] then [y] else x++[(printWord y h num)] ) [] a
+
+
+-- [([HypWord "con",Word "trola"],[]),([HypWord "contro",Word "la"],[])]
+--getFirtsWord h num w ultima = head (getCadena num ultima (tail (lineBreaks2 h num ([Word (head (words w))]))))
+
+
+-- lista = line2string (convertirListaFull lastone)
+--  lista2 = line2string (convertirListaFull2 (map (\a -> spaces2cadena a) (init lista) ))
+
+
+-- [([HypWord "con"], [Word "trola"]), ([HypWord "contro"], [Word "la"])]
+
+--y = ["controla el presente"]
+--x = ["Quien controla el","pasado controla el","futuro. Quien"]
+--h = [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])]
+--head (getCadena 20 (last x) (tail (lineBreaks2 h 20 ([Word (head (words (head y)))]))))
+
+--[HypWord "con", Word "trola"]
+
+--ultima = "futuro. Quien"
+--palabra1 = con
+--palabra2 = trola
+
+--a = [ "Quien controla el","pasado controla el","futuro. Quien","controla el presente","controla el pasado."]
+
+--y="controla el presente"
+
+--head $ getFirtsWord h num y
+--HypWord "con"
+--line2string [head $ getFirtsWord h num y]
+--"con-"
 
 -- init (x)++[ultima++" "++palabra1++"-"]++ [palabra2++" "++(foldl (\o p -> if o /= [] then  o++" "++p else p) [] (tail (words y)))]
 
@@ -303,12 +409,7 @@ convertCadenaArreglo w = map (\(x,y,z) -> x++y) [w]
 --h=[(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 
 --ultima = "futuro. Quien"
 
- -- 12345678901234567890
--- [ "Quien controla el",
--- "pasado controla el",
--- "futuro. Quien",
--- "controla el presente",
--- "controla el pasado."]
+
 
 --(line2string [(head (head (getCadena num ultima (tail (lineBreaks2 h num ([Word (head (words (head y)))]))))))])
 --(line2string [(head (head (getCadena num ultima (tail (lineBreaks2 h num [Word "controla"])))))])
@@ -336,10 +437,5 @@ convertCadenaArreglo w = map (\(x,y,z) -> x++y) [w]
 
 
 
-main = do
-    
-    print "My first Haskell program"
-
-    --name <- getLine
-    --print ("Hello, " ++ name)
+------------------------------------------------------------------------------------
 
