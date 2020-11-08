@@ -4,11 +4,12 @@ import Data.Map hiding (map, foldl, drop)
 import System.IO
 import Data.Char
 
-type HypMap = [(Token,[String])]
-type Estado = Map String [String]
+
 type Line = [Token]
 data Token = Word String | Blank | HypWord String
             deriving (Eq, Show)
+type HypMap = [(Token,[String])]
+type Estado = Map Token [[Char]]
 
 main :: IO ()
 main = do
@@ -26,6 +27,7 @@ mainloop estado = do
                     nombreArchivo <- getLine
                     dict <- openFile nombreArchivo ReadMode
                     nuevoestado <- loadWords dict estado
+                    hClose dict
                     let totalpalabras = length nuevoestado
                     putStrLn $ "Diccionario cargado ("++[intToDigit totalpalabras]++" palabras)"
                     mainloop nuevoestado
@@ -41,15 +43,15 @@ loadWords inh estado = do
       ineof <- hIsEOF inh
       if ineof then return estado
                else do inpStr <- hGetLine inh
-                       let nuevoestado = foldl contar_token estado (words (map toLower inpStr))
+                       let nuevoestado = foldl createData estado ([words (map toLower inpStr)])
                        loadWords inh nuevoestado
 
-contar_token :: Estado -> String -> Estado
-contar_token estado tok = case Data.Map.lookup tok estado of
-                               Nothing -> insert tok 1 estado
-                               Just valor -> insert tok (valor+1) estado
-  
+createData :: Estado -> [[Char]] -> Estado
+createData estado tok = insert (Word (head tok)) (getHypMap (last tok)) estado
 
+--"hola-mundo"
+getHypMap :: [Char] -> [[Char]]
+getHypMap w = words [if c == '-' then ' ' else c|c <- w]
 ---------------------------------------------------
 string2line :: String -> Line
 string2line w = map (\x->Word x) $ words w
