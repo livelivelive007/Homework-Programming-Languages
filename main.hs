@@ -1,12 +1,56 @@
 import qualified Data.Text as T
---import Prelude hiding (null, lookup, filter)
---import Data.Map hiding (map, foldl, drop)
---import System.IO
+import Prelude hiding (null, filter)
+import Data.Map hiding (map, foldl, drop)
+import System.IO
+import Data.Char
 
+type HypMap = [(Token,[String])]
+type Estado = Map String [String]
 type Line = [Token]
 data Token = Word String | Blank | HypWord String
             deriving (Eq, Show)
 
+main :: IO ()
+main = do
+        mainloop (fromList[])
+
+mainloop :: Estado -> IO ()
+mainloop estado = do
+    putStr ">> "
+    inpStr <- getLine
+    let tokens = words inpStr
+    let comando = tokens!!0
+
+    case comando of
+        "load" -> do
+                    nombreArchivo <- getLine
+                    dict <- openFile nombreArchivo ReadMode
+                    nuevoestado <- loadWords dict estado
+                    let totalpalabras = length nuevoestado
+                    putStrLn $ "Diccionario cargado ("++[intToDigit totalpalabras]++" palabras)"
+                    mainloop nuevoestado
+
+        "exit" -> do
+                    putStrLn "Saliento..."
+        _      -> do
+                    putStrLn $ "Comando desconocido ("++ comando ++"): '" ++ inpStr ++ "'" 
+                    mainloop estado
+---------------------------------------------------
+loadWords :: Handle -> Estado -> IO Estado
+loadWords inh estado = do
+      ineof <- hIsEOF inh
+      if ineof then return estado
+               else do inpStr <- hGetLine inh
+                       let nuevoestado = foldl contar_token estado (words (map toLower inpStr))
+                       loadWords inh nuevoestado
+
+contar_token :: Estado -> String -> Estado
+contar_token estado tok = case Data.Map.lookup tok estado of
+                               Nothing -> insert tok 1 estado
+                               Just valor -> insert tok (valor+1) estado
+  
+
+---------------------------------------------------
 string2line :: String -> Line
 string2line w = map (\x->Word x) $ words w
 --
@@ -78,13 +122,13 @@ mer3 w = foldl (\x y -> let (a,b) = x in if a == [] then (y,b) else
 --hyphenate [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"]),(Word "presente",["pre","sen","te"])] (Word "futuro...")
 --[(HypWord "fu",Word "turo..."),(HypWord "futu",Word "ro...")]
 
-type HypMap = [(Token,[String])]
+
 hyphenate :: HypMap -> Token -> [(Token,Token)]
 hyphenate q w = let ft = T.unpack (T.takeWhileEnd (=='.') (T.pack $ convertTokenString w)) 
-                in if (last (convertTokenString w)) == '.' then case lookup (Word $ T.unpack $ T.dropWhileEnd (=='.') $ T.pack $ convertTokenString w) q of
+                in if (last (convertTokenString w)) == '.' then case Prelude.lookup (Word $ T.unpack $ T.dropWhileEnd (=='.') $ T.pack $ convertTokenString w) q of
                      Nothing -> [] --Porque entra aqui? Si realmente le quita los puntos al final
                      Just valor -> addPoints ft (mergers valor)
-                    else case lookup w q of
+                    else case Prelude.lookup w q of
                      Nothing -> []
                      Just valor -> mergers valor
 
