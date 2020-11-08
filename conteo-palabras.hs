@@ -79,6 +79,17 @@ contar_token estado tok = case lookup tok estado of
                                Nothing -> insert tok 1 estado
                                Just valor -> insert tok (valor+1) estado
   
+-- función que implementa leer un archivo línea por línea
+-- y contar las palabras de cada línea
+cargar :: Handle -> Estado -> IO Estado
+cargar inh estado = do
+      ineof <- hIsEOF inh
+      if ineof then return estado
+               else do inpStr <- hGetLine inh
+                       let nuevoestado = foldl contar_token estado (words (map toLower inpStr))
+                       cargar inh nuevoestado
+
+
 -- función que implementa el comando borrar
 cmd_borrar::[String] -> Estado -> (Estado, String)
 cmd_borrar [] estado = (estado, "No se especificó qué borrar")
@@ -97,15 +108,6 @@ cmd_desconocido cmd comando estado = (False,estado,mensaje)
 cmd_imp :: Estado -> (Estado, String)
 cmd_imp estado = (estado, show estado)
 
--- función que implementa leer un archivo línea por línea
--- y contar las palabras de cada línea
-cargar :: Handle -> Estado -> IO Estado
-cargar inh estado = do
-      ineof <- hIsEOF inh
-      if ineof then return estado
-               else do inpStr <- hGetLine inh
-                       let nuevoestado = foldl contar_token estado (words (map toLower inpStr))
-                       cargar inh nuevoestado
 
 
 -- descargar :: Handle -> [(String,Int)] -> IO ()

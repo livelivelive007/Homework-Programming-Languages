@@ -77,8 +77,7 @@ foldl (\x y -> if x == [] then [y] else let ultima=(last x) palabra1=(getWord1 (
 
 -----------------------------------------------------
 
-
-type Estado = [(Token,[String])]
+type Estado = Map Token [[Char]]
 
 main :: IO ()
 main = do
@@ -93,10 +92,12 @@ mainloop estado = do
 
     case comando of
         "load" -> do
-                    let diccionario = tail tokens
-
+                    nombreArchivo <- getLine
+                    dict <- openFile nombreArchivo ReadMode
+                    nuevoestado <- loadWords dict estado
+                    hClose dict
                     let totalpalabras = length nuevoestado
-                    printStrLn $ "Diccionario cargado ("++totalpalabras++" palabras)"
+                    putStrLn $ "Diccionario cargado ("++[intToDigit totalpalabras]++" palabras)"
                     mainloop nuevoestado
 
         "show" -> do
@@ -140,6 +141,19 @@ mainloop estado = do
                     putStrLn $ "Comando desconocido ("++ comando ++"): '" ++ inpStr ++ "'" 
                     mainloop estado
 
+loadWords :: Handle -> Estado -> IO Estado
+loadWords inh estado = do
+      ineof <- hIsEOF inh
+      if ineof then return estado
+               else do inpStr <- hGetLine inh
+                       let nuevoestado = foldl createData estado ([words (map toLower inpStr)])
+                       loadWords inh nuevoestado
+
+createData :: Estado -> [[Char]] -> Estado
+createData estado tok = insert (Word (head tok)) (getHypMap (last tok)) estado
+
+getHypMap :: [Char] -> [[Char]]
+getHypMap w = words [if c == '-' then ' ' else c|c <- w]
 
 
 

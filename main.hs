@@ -1,7 +1,9 @@
 import qualified Data.Text as T
-import Prelude hiding (null, filter)
+import Prelude hiding (null,filter)
 import Data.Map hiding (map, foldl, drop)
+import Data.List (sort,map)
 import System.IO
+
 import Data.Char
 
 
@@ -9,7 +11,8 @@ type Line = [Token]
 data Token = Word String | Blank | HypWord String
             deriving (Eq, Show)
 type HypMap = [(Token,[String])]
-type Estado = Map Token [[Char]]
+--type Estado = Map Token [[Char]]
+type Estado = Map String [String]
 
 main :: IO ()
 main = do
@@ -23,14 +26,45 @@ mainloop estado = do
     let comando = tokens!!0
 
     case comando of
-        "load" -> do
+        "leer" -> do
+                    putStrLn ">>> Nombre archivo entrada: "
                     nombreArchivo <- getLine
-                    dict <- openFile nombreArchivo ReadMode
-                    nuevoestado <- loadWords dict estado
-                    hClose dict
-                    let totalpalabras = length nuevoestado
-                    putStrLn $ "Diccionario cargado ("++[intToDigit totalpalabras]++" palabras)"
+                    inh <- openFile nombreArchivo ReadMode
+                    nuevoestado <- cargar inh estado
+                    hClose inh
+                    putStrLn $ "Archivo " ++ nombreArchivo ++ " fue cargado"
                     mainloop nuevoestado
+
+        "show" -> do
+                    let (nuevoestado, salida) = showPalabras estado
+                    putStrLn salida
+                    mainloop nuevoestado
+
+
+        "ins" -> do
+                    let nuevoestado = setPalabra (tail tokens) estado
+                    putStrLn $ "Palabra "++head (init (tail tokens))++" agregada"
+                    mainloop nuevoestado
+
+        "save" -> do
+                    putStrLn ">>> Nombre archivo salida: "
+                    nombreArchivo <- getLine
+                    outh <- openFile nombreArchivo WriteMode
+                    descargar outh (sort (toList estado))
+                    hClose outh
+                    let totalpalabras = length estado
+                    putStrLn $ "Diccionario guardado ( Total de palabras = "++[intToDigit totalpalabras]
+                    mainloop estado
+        
+        "split" -> do  
+                    let longitud = head $  map (\x -> digitToInt x) (head (tail tokens))
+                    let separar = head (tail (tail tokens))
+                    let ajustar = head (tail (tail (tail tokens)))
+                    let texto = foldl (\x y -> if x /= "" then x++" "++y else y) "" (tail (tail (tail (tail tokens))))
+                    
+                    let salida = splitWords longitud separar ajustar texto
+                    putStrLn salida
+                    mainloop estado
 
         "exit" -> do
                     putStrLn "Saliento..."
@@ -38,20 +72,35 @@ mainloop estado = do
                     putStrLn $ "Comando desconocido ("++ comando ++"): '" ++ inpStr ++ "'" 
                     mainloop estado
 ---------------------------------------------------
-loadWords :: Handle -> Estado -> IO Estado
-loadWords inh estado = do
+splitWords :: Int -> String -> String -> String -> String
+splitWords longitud separar ajustar texto = let result = separarYalinear longitud separar ajustar texto
+                                            in
+                                            foldl (\x y -> if x /= "" then x++" "++y else y) "" result 
+--"-"++separar++"-"++ajustar++"-"++texto 
+contar_token :: Estado -> [String] -> Estado
+contar_token estado tok = insert (head tok) (getHypMap (last tok)) estado
+
+cargar :: Handle -> Estado -> IO Estado
+cargar inh estado = do
       ineof <- hIsEOF inh
       if ineof then return estado
                else do inpStr <- hGetLine inh
-                       let nuevoestado = foldl createData estado ([words (map toLower inpStr)])
-                       loadWords inh nuevoestado
+                       let nuevoestado = contar_token estado (words (map toLower inpStr))
+                       cargar inh nuevoestado
 
-createData :: Estado -> [[Char]] -> Estado
-createData estado tok = insert (Word (head tok)) (getHypMap (last tok)) estado
-
---"hola-mundo"
 getHypMap :: [Char] -> [[Char]]
 getHypMap w = words [if c == '-' then ' ' else c|c <- w]
+
+showPalabras :: Estado -> (Estado, String)
+showPalabras estado = (estado, show estado)
+
+setPalabra :: [String] -> Estado -> Estado
+setPalabra tokens estado = contar_token estado tokens
+
+descargar outh [] = return ()
+descargar outh ((k,v):kvs) = do hPutStrLn outh $ k ++ " " ++ (show v)
+                                descargar outh kvs
+
 ---------------------------------------------------
 string2line :: String -> Line
 string2line w = map (\x->Word x) $ words w
