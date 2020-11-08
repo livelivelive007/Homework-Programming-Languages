@@ -3,7 +3,6 @@ import Prelude hiding (null,filter)
 import Data.Map hiding (map, foldl, drop)
 import Data.List (sort,map)
 import System.IO
-
 import Data.Char
 
 
@@ -56,12 +55,13 @@ mainloop estado = do
                     putStrLn $ "Diccionario guardado ( Total de palabras = "++[intToDigit totalpalabras]
                     mainloop estado
         
-        "split" -> do  
-                    let longitud = head $  map (\x -> digitToInt x) (head (tail tokens))
-                    let separar = head (tail (tail tokens))
-                    let ajustar = head (tail (tail (tail tokens)))
-                    let texto = foldl (\x y -> if x /= "" then x++" "++y else y) "" (tail (tail (tail (tail tokens))))
-                    
+        "split" -> do 
+                    --putStrLn ">>> Longitud: "
+                    --longitud2 <- getLine
+                    let longitud = (read (tokens!!1)::Int)
+                    let separar = (tokens!!2)
+                    let ajustar = (tokens!!3)
+                    let texto = (foldl (\x y -> if x /= "" then x++" "++y else y) "" (tail (tail (tail (tail tokens)))))
                     let salida = splitWords longitud separar ajustar texto
                     putStrLn salida
                     mainloop estado
@@ -71,11 +71,16 @@ mainloop estado = do
         _      -> do
                     putStrLn $ "Comando desconocido ("++ comando ++"): '" ++ inpStr ++ "'" 
                     mainloop estado
+
+--putStrLn ">>> Longitud: "
+--longitud <- getLine
+--putStrLn ">>> Separar"
 ---------------------------------------------------
+--separarYalinear 20 "NOSEPARAR" "NOAJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
 splitWords :: Int -> String -> String -> String -> String
 splitWords longitud separar ajustar texto = let result = separarYalinear longitud separar ajustar texto
                                             in
-                                            foldl (\x y -> if x /= "" then x++" "++y else y) "" result 
+                                            foldl (\x y -> if x /= "" then x++"\n"++y else y) "" result 
 --"-"++separar++"-"++ajustar++"-"++texto 
 contar_token :: Estado -> [String] -> Estado
 contar_token estado tok = insert (head tok) (getHypMap (last tok)) estado
@@ -269,8 +274,10 @@ convertStringToken lista w = lista++[w]++[Blank]
 -- "controla el pasado."]
 
 separarYalinear :: Int -> String -> String -> String -> [String]
-separarYalinear num noseparar noajustar w = if noseparar == "NOSEPARAR" && noajustar == "NOAJUSTAR"
-                                                then getLinePrimeraCorrida(breakLine num (string2line w)) num
+separarYalinear num noseparar noajustar w = if noseparar /= "" && noajustar /= "" 
+                                                then if noseparar == "NOSEPARAR" && noajustar == "NOAJUSTAR"
+                                                    then getLinePrimeraCorrida(breakLine num (string2line w)) num
+                                                    else []
                                                 else []
 
 getLinePrimeraCorrida :: (Line,Line) -> Int-> [String]
