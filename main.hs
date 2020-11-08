@@ -10,7 +10,6 @@ type Line = [Token]
 data Token = Word String | Blank | HypWord String
             deriving (Eq, Show)
 type HypMap = [(Token,[String])]
---type Estado = Map Token [[Char]]
 type Estado = Map String [String]
 
 main :: IO ()
@@ -52,17 +51,50 @@ mainloop estado = do
                     descargar outh (sort (toList estado))
                     hClose outh
                     let totalpalabras = length estado
-                    putStrLn $ "Diccionario guardado ( Total de palabras = "++[intToDigit totalpalabras]
+                    putStrLn $ "Diccionario guardado ( "++show totalpalabras++" palabras"
                     mainloop estado
         
         "split" -> do 
-                    --putStrLn ">>> Longitud: "
-                    --longitud2 <- getLine
                     let longitud = (read (tokens!!1)::Int)
                     let separar = (tokens!!2)
                     let ajustar = (tokens!!3)
                     let texto = (foldl (\x y -> if x /= "" then x++" "++y else y) "" (tail (tail (tail (tail tokens)))))
                     let salida = splitWords longitud separar ajustar texto
+                    putStrLn salida
+                    mainloop estado
+
+        "splitf" -> do 
+                    let longitud = (read (tokens!!1)::Int)
+                    let separar = (tokens!!2)
+                    let ajustar = (tokens!!3)
+                    let texto = (tokens!!4)
+                
+                    inh <- openFile texto ReadMode
+                    cadenatexto <- hGetLine inh
+                    hClose inh
+
+                    let salida = splitWords longitud separar ajustar cadenatexto
+                    putStrLn salida
+
+                    let tamano = length tokens
+                    if tamano == 6 
+                        then do 
+                            outh <- openFile (tokens!!5) WriteMode
+                            descargar2 outh salida
+                            hClose outh 
+                            mainloop estado
+                        else mainloop estado
+
+
+        "split2" -> do 
+                    let longitud = (read (tokens!!1)::Int)
+                    let separar = (tokens!!2)
+                    let ajustar = (tokens!!3)
+                    let texto = (foldl (\x y -> if x /= "" then x++" "++y else y) "" (tail (tail (tail (tail tokens)))))
+                    
+                    let hp = convertEstado estado
+
+                    let salida = splitWords2 hp longitud separar ajustar texto
                     putStrLn salida
                     mainloop estado
 
@@ -76,7 +108,36 @@ mainloop estado = do
 --longitud <- getLine
 --putStrLn ">>> Separar"
 ---------------------------------------------------
---separarYalinear 20 "NOSEPARAR" "NOAJUSTAR" "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
+getLinea11 :: (HypMap,Int) -> HypMap
+getLinea11 w = head $ map (\(x,y) -> x ) [w]
+
+convertEstado :: Estado -> HypMap
+convertEstado estado = let keyss = keys estado 
+                           result = foldl (\x y ->let (a,b) = x in ((getLinea11 x)++[(Word (keyss!!b), y)],b+1) ) ([],0) estado
+                        in getLinea11 result 
+--let palabra=Word (head y)
+--                                        b=tail y
+  --                                        in
+
+--convertEstado :: Estado -> HypMap
+--convertEstado estado = let f key x = (show key) ++ ":" ++ x
+--                           mapa = mapWithKey f estado
+  --                         in foldl (\x y ->let m=getHypMap2 y
+    --                                            a=head m
+      --                                          b=last m 
+        --                                        in x++[(Word a, [b])] ) [] mapa
+
+splitWords2 :: HypMap -> Int -> String -> String -> String -> String
+splitWords2 hp longitud separar ajustar texto = let result = separarYalinear2 hp longitud separar ajustar texto
+                                            in
+                                            foldl (\x y -> if x /= "" then x++"\n"++y else y) "" result 
+--show hp
+
+descargar2 outh [] = return ()
+descargar2 outh (kvs) = do hPutStrLn outh kvs
+
+--splitf 20 NOSEPARAR NOAJUSTAR texto1.txt
+--split 20 NOSEPARAR NOAJUSTAR Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
 splitWords :: Int -> String -> String -> String -> String
 splitWords longitud separar ajustar texto = let result = separarYalinear longitud separar ajustar texto
                                             in
@@ -277,7 +338,9 @@ separarYalinear :: Int -> String -> String -> String -> [String]
 separarYalinear num noseparar noajustar w = if noseparar /= "" && noajustar /= "" 
                                                 then if noseparar == "NOSEPARAR" && noajustar == "NOAJUSTAR"
                                                     then getLinePrimeraCorrida(breakLine num (string2line w)) num
-                                                    else []
+                                                    else if noseparar == "NOSEPARAR" && noajustar == "AJUSTAR"
+                                                        then getLinePrimeraCorrida3(breakLine num (string2line w)) num
+                                                        else []
                                                 else []
 
 getLinePrimeraCorrida :: (Line,Line) -> Int-> [String]
