@@ -157,3 +157,123 @@ getHypMap w = words [if c == '-' then ' ' else c|c <- w]
 
 
 
+convertirListaFull :: String -> Line
+convertirListaFull w = head (map (\x -> string2line x) [w])
+
+convertirListaFull2 :: [String] -> Line
+convertirListaFull2 w = head (map (\x -> string2line x) w)
+
+
+getWord1 :: [Token] -> String 
+getWord1 w = line2string [head w]
+
+getWord2 :: [Token] -> String 
+getWord2 w = line2string [last w]
+
+obtenerDatoFinal :: [String] -> String -> [String]
+obtenerDatoFinal w1 w2 = w1++[w2]
+
+getCadena :: Int -> String -> [(Line, Line)] -> [Line]
+getCadena num w cadena = convertCadenaArreglo (foldl (\x y -> let (a,b) = y 
+                                                                  ph = init a 
+                                                                  pw = tail a
+                                                                  largototal = (length w)+(length ph)+1
+                                                                  (m,n,k) = x
+                                                        in
+                                                        if largototal < num && k == 0
+                                                            then (ph,pw,k+1)
+                                                            else x ) ([],[],0) cadena)
+
+convertCadenaArreglo :: (Line,Line,Int) -> [Line]
+convertCadenaArreglo w = map (\(x,y,z) -> x++y) [w]
+
+--(init (x))++[ultima++" "++palabra1]++[palabra2++" "++getWordUnion y]
+
+-- foldl (\x y -> if x == [] then [y] else x++[(printWord y h num)] ) [] a
+
+
+-- [([HypWord "con",Word "trola"],[]),([HypWord "contro",Word "la"],[])]
+--getFirtsWord h num w ultima = head (getCadena num ultima (tail (lineBreaks2 h num ([Word (head (words w))]))))
+
+
+-- lista = line2string (convertirListaFull lastone)
+--  lista2 = line2string (convertirListaFull2 (map (\a -> spaces2cadena a) (init lista) ))
+
+
+-- [([HypWord "con"], [Word "trola"]), ([HypWord "contro"], [Word "la"])]
+
+--y = ["controla el presente"]
+--x = ["Quien controla el","pasado controla el","futuro. Quien"]
+--h = [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])]
+--head (getCadena 20 (last x) (tail (lineBreaks2 h 20 ([Word (head (words (head y)))]))))
+
+--[HypWord "con", Word "trola"]
+
+--ultima = "futuro. Quien"
+--palabra1 = con
+--palabra2 = trola
+
+--a = [ "Quien controla el","pasado controla el","futuro. Quien","controla el presente","controla el pasado."]
+
+--y="controla el presente"
+
+--head $ getFirtsWord h num y
+--HypWord "con"
+--line2string [head $ getFirtsWord h num y]
+--"con-"
+
+-- init (x)++[ultima++" "++palabra1++"-"]++ [palabra2++" "++(foldl (\o p -> if o /= [] then  o++" "++p else p) [] (tail (words y)))]
+
+--foldl (\x y -> if x == [] then y else x++[y]) [] a
+
+--((init (x))++[ultima++" "++palabra1++"-"])++[palabra2++" "++(foldl (\o p -> if o /= [] then  o++" "++p else p) [] (tail (words (head y))))]
+
+--(["Quien controla el","pasado controla el", "futuro. Quien con-"])++["trola el presente"]
+
+--x= [ "Quien controla el",
+-- "pasado controla el",
+-- "futuro. Quien"]
+--y= "controla el presente"
+
+-- ["el","presente"]
+-- ... ++ ["futuro. Quien con-"] ++ ["trola el presente"]
+
+--y=["controla el presente"]
+--num=20
+--h=[(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 
+--ultima = "futuro. Quien"
+
+
+
+--(line2string [(head (head (getCadena num ultima (tail (lineBreaks2 h num ([Word (head (words (head y)))]))))))])
+--(line2string [(head (head (getCadena num ultima (tail (lineBreaks2 h num [Word "controla"])))))])
+--(line2string [(head (head (getCadena num ultima [([HypWord "con",Word "trola"],[]),([HypWord "contro",Word "la"],[])]))))])
+--(line2string [(head [[HypWord "con",Word "trola"]])])
+--"con-"
+
+--(line2string [(last (head [[HypWord "con",Word "trola"]]))])
+--"trola"
+
+--[(foldl (\x y -> x++y) [] w1)++w2]
+
+--(init x)++[(ultima++" "++palabra1)]++[(head (tail (words (head y))))]
+--ultima++".."++palabra1++".."++palabra2++".."++largototal
+
+--foldl (\x y -> x++".."++y) [] ["Quien controla el pasado","controla el futuro. Quien","controla el presente controla","el pasado."]
+
+--combinarCadenas ((init x)++ultima++palabra1):combinarCadenas(palabra2++(tail y)):[]
+--combinarCadenas :: [Char] -> [String]
+--combinarCadenas w = map (\x xs -> x:xs ) w
+
+--w = "futuro. Quien"
+--cadena = [([HypWord "con",Word "trola"],[]),([HypWord "contro",Word "la"],[])]
+--foldl (\x y -> let (a,b)=(y) ph=(init a) pw=(tail a) largototal=((length w)+(length ph)+1) (m,n,k)=(x) in if largototal<=num && k==0 then (ph,pw,k+1) else x ) ([],[],0) cadena
+
+
+
+------------------------------------------------------------------------------------
+
+
+
+
+
