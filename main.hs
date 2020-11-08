@@ -5,12 +5,12 @@ import Data.List (sort,map)
 import System.IO
 import Data.Char
 
+type HypMap = [(Token,[String])]
+type Estado = Map String [String]
 
 type Line = [Token]
 data Token = Word String | Blank | HypWord String
             deriving (Eq, Show)
-type HypMap = [(Token,[String])]
-type Estado = Map String [String]
 
 main :: IO ()
 main = do
@@ -24,10 +24,11 @@ mainloop estado = do
     let comando = tokens!!0
 
     case comando of
-        "leer" -> do
+        "load" -> do
                     putStrLn ">>> Nombre archivo entrada: "
                     nombreArchivo <- getLine
                     inh <- openFile nombreArchivo ReadMode
+                    hSetEncoding inh utf8
                     nuevoestado <- cargar inh estado
                     hClose inh
                     putStrLn $ "Archivo " ++ nombreArchivo ++ " fue cargado"
@@ -48,10 +49,11 @@ mainloop estado = do
                     putStrLn ">>> Nombre archivo salida: "
                     nombreArchivo <- getLine
                     outh <- openFile nombreArchivo WriteMode
+                    hSetEncoding outh utf8
                     descargar outh (sort (toList estado))
                     hClose outh
                     let totalpalabras = length estado
-                    putStrLn $ "Diccionario guardado ( "++show totalpalabras++" palabras"
+                    putStrLn $ "Diccionario guardado ( "++show totalpalabras++" palabras)"
                     mainloop estado
         
         "split" -> do 
@@ -85,7 +87,6 @@ mainloop estado = do
                             mainloop estado
                         else mainloop estado
 
-
         "split2" -> do 
                     let longitud = (read (tokens!!1)::Int)
                     let separar = (tokens!!2)
@@ -98,53 +99,37 @@ mainloop estado = do
                     putStrLn salida
                     mainloop estado
 
+        "splitf2" -> do 
+                    let longitud = (read (tokens!!1)::Int)
+                    let separar = (tokens!!2)
+                    let ajustar = (tokens!!3)
+                    let texto = (tokens!!4)
+                
+                    inh <- openFile texto ReadMode
+                    cadenatexto <- hGetLine inh
+                    hClose inh
+
+                    let hp = convertEstado estado
+
+                    let salida = splitWords2 hp longitud separar ajustar cadenatexto
+                    putStrLn salida
+
+                    let tamano = length tokens
+                    if tamano == 6 
+                        then do 
+                            outh <- openFile (tokens!!5) WriteMode
+                            descargar2 outh salida
+                            hClose outh 
+                            mainloop estado
+                        else mainloop estado
+
         "exit" -> do
                     putStrLn "Saliento..."
         _      -> do
                     putStrLn $ "Comando desconocido ("++ comando ++"): '" ++ inpStr ++ "'" 
                     mainloop estado
 
---putStrLn ">>> Longitud: "
---longitud <- getLine
---putStrLn ">>> Separar"
 ---------------------------------------------------
-getLinea11 :: (HypMap,Int) -> HypMap
-getLinea11 w = head $ map (\(x,y) -> x ) [w]
-
-convertEstado :: Estado -> HypMap
-convertEstado estado = let keyss = keys estado 
-                           result = foldl (\x y ->let (a,b) = x in ((getLinea11 x)++[(Word (keyss!!b), y)],b+1) ) ([],0) estado
-                        in getLinea11 result 
---let palabra=Word (head y)
---                                        b=tail y
-  --                                        in
-
---convertEstado :: Estado -> HypMap
---convertEstado estado = let f key x = (show key) ++ ":" ++ x
---                           mapa = mapWithKey f estado
-  --                         in foldl (\x y ->let m=getHypMap2 y
-    --                                            a=head m
-      --                                          b=last m 
-        --                                        in x++[(Word a, [b])] ) [] mapa
-
-splitWords2 :: HypMap -> Int -> String -> String -> String -> String
-splitWords2 hp longitud separar ajustar texto = let result = separarYalinear2 hp longitud separar ajustar texto
-                                            in
-                                            foldl (\x y -> if x /= "" then x++"\n"++y else y) "" result 
---show hp
-
-descargar2 outh [] = return ()
-descargar2 outh (kvs) = do hPutStrLn outh kvs
-
---splitf 20 NOSEPARAR NOAJUSTAR texto1.txt
---split 20 NOSEPARAR NOAJUSTAR Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado."
-splitWords :: Int -> String -> String -> String -> String
-splitWords longitud separar ajustar texto = let result = separarYalinear longitud separar ajustar texto
-                                            in
-                                            foldl (\x y -> if x /= "" then x++"\n"++y else y) "" result 
---"-"++separar++"-"++ajustar++"-"++texto 
-contar_token :: Estado -> [String] -> Estado
-contar_token estado tok = insert (head tok) (getHypMap (last tok)) estado
 
 cargar :: Handle -> Estado -> IO Estado
 cargar inh estado = do
@@ -154,8 +139,33 @@ cargar inh estado = do
                        let nuevoestado = contar_token estado (words (map toLower inpStr))
                        cargar inh nuevoestado
 
-getHypMap :: [Char] -> [[Char]]
+contar_token :: Estado -> [String] -> Estado
+contar_token estado tok = insert (head tok) (getHypMap (last tok)) estado
+
+getHypMap :: String -> [String]
 getHypMap w = words [if c == '-' then ' ' else c|c <- w]
+
+
+getLinea11 :: (HypMap,Int) -> HypMap
+getLinea11 w = head $ map (\(x,y) -> x ) [w]
+
+convertEstado :: Estado -> HypMap
+convertEstado estado = let keyss = keys estado 
+                           result = foldl (\x y ->let (a,b) = x in ((getLinea11 x)++[(Word (keyss!!b), y)],b+1) ) ([],0) estado
+                        in getLinea11 result 
+
+splitWords2 :: HypMap -> Int -> String -> String -> String -> String
+splitWords2 hp longitud separar ajustar texto = let result = separarYalinear2 hp longitud separar ajustar texto
+                                            in
+                                            foldl (\x y -> if x /= "" then x++"\n"++y else y) "" result 
+
+descargar2 outh [] = return ()
+descargar2 outh (kvs) = do hPutStrLn outh kvs
+
+splitWords :: Int -> String -> String -> String -> String
+splitWords longitud separar ajustar texto = let result = separarYalinear longitud separar ajustar texto
+                                            in
+                                            foldl (\x y -> if x /= "" then x++"\n"++y else y) "" result 
 
 showPalabras :: Estado -> (Estado, String)
 showPalabras estado = (estado, show estado)
@@ -168,6 +178,7 @@ descargar outh ((k,v):kvs) = do hPutStrLn outh $ k ++ " " ++ (show v)
                                 descargar outh kvs
 
 ---------------------------------------------------
+
 string2line :: String -> Line
 string2line w = map (\x->Word x) $ words w
 --
@@ -239,7 +250,6 @@ mer3 w = foldl (\x y -> let (a,b) = x in if a == [] then (y,b) else
 --hyphenate [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"]),(Word "presente",["pre","sen","te"])] (Word "futuro...")
 --[(HypWord "fu",Word "turo..."),(HypWord "futu",Word "ro...")]
 
-
 hyphenate :: HypMap -> Token -> [(Token,Token)]
 hyphenate q w = let ft = T.unpack (T.takeWhileEnd (=='.') (T.pack $ convertTokenString w)) 
                 in if (last (convertTokenString w)) == '.' then case Prelude.lookup (Word $ T.unpack $ T.dropWhileEnd (=='.') $ T.pack $ convertTokenString w) q of
@@ -262,9 +272,6 @@ convertTypeCharToToken w = head $ map (\(x,y) -> (HypWord x, Word y)) [w]
 
 string22line :: String -> Token
 string22line w = Word w
-
---transf :: Token -> Token -> Token
---transf w e = w++e
 
 --h
 --lineBreaks [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 17 [Word "Aquel",Word "que",Word "controla"]
@@ -312,7 +319,7 @@ getLineaReturn num w cont largoriginal = let (x,y,z) = getIlera num w cont largo
                             if num == 0 
                                 then (w,0,0)
                                 else getLineaReturn y x cont largoriginal
---getIlera num w cont
+
 getLinea  :: (Line, Int, Int) -> Line
 getLinea w = head $ map (\(x,y,z) -> x ) [w]
 
@@ -399,7 +406,14 @@ getLinePrimeraCorrida3 w n = let (a,b) = w
 separarYalinear2 :: HypMap -> Int -> String -> String -> String -> [String]
 separarYalinear2 hm num noseparar noajustar w = if noseparar == "SEPARAR" && noajustar == "NOAJUSTAR"
                                                 then getResultFinal hm num (getLinePrimeraCorrida (breakLine (num) (string2line w)) num)
-                                                else []
+                                                else if noseparar == "SEPARAR" && noajustar == "AJUSTAR"
+                                                    then let texto = foldl (\x y -> if x == "" then y else x++" "++y) "" (getResultFinal hm num (getLinePrimeraCorrida (breakLine (num) (string2line w)) num))
+                                                        in
+                                                        getLinePrimeraCorrida3(breakLine num (string2line texto)) num
+                                                    else []
+
+                                                    
+                                                
 
 getResultFinal :: HypMap -> Int -> [String] -> [String]
 getResultFinal h num w  = foldl (\x y -> if x == [] 
@@ -481,126 +495,3 @@ getLinePrimeraCorrida4 w n = let (a,b) = w
                                     else if dato /= 0
                                         then [line2string (insertBlanks dato a)]
                                         else [line2string a]
-
-
-
------------------------------------------------------------------------------
-
-
-
-convertirListaFull :: String -> Line
-convertirListaFull w = head (map (\x -> string2line x) [w])
-
-convertirListaFull2 :: [String] -> Line
-convertirListaFull2 w = head (map (\x -> string2line x) w)
-
-
-getWord1 :: [Token] -> String 
-getWord1 w = line2string [head w]
-
-getWord2 :: [Token] -> String 
-getWord2 w = line2string [last w]
-
-obtenerDatoFinal :: [String] -> String -> [String]
-obtenerDatoFinal w1 w2 = w1++[w2]
-
-getCadena :: Int -> String -> [(Line, Line)] -> [Line]
-getCadena num w cadena = convertCadenaArreglo (foldl (\x y -> let (a,b) = y 
-                                                                  ph = init a 
-                                                                  pw = tail a
-                                                                  largototal = (length w)+(length ph)+1
-                                                                  (m,n,k) = x
-                                                        in
-                                                        if largototal < num && k == 0
-                                                            then (ph,pw,k+1)
-                                                            else x ) ([],[],0) cadena)
-
-convertCadenaArreglo :: (Line,Line,Int) -> [Line]
-convertCadenaArreglo w = map (\(x,y,z) -> x++y) [w]
-
---(init (x))++[ultima++" "++palabra1]++[palabra2++" "++getWordUnion y]
-
--- foldl (\x y -> if x == [] then [y] else x++[(printWord y h num)] ) [] a
-
-
--- [([HypWord "con",Word "trola"],[]),([HypWord "contro",Word "la"],[])]
---getFirtsWord h num w ultima = head (getCadena num ultima (tail (lineBreaks2 h num ([Word (head (words w))]))))
-
-
--- lista = line2string (convertirListaFull lastone)
---  lista2 = line2string (convertirListaFull2 (map (\a -> spaces2cadena a) (init lista) ))
-
-
--- [([HypWord "con"], [Word "trola"]), ([HypWord "contro"], [Word "la"])]
-
---y = ["controla el presente"]
---x = ["Quien controla el","pasado controla el","futuro. Quien"]
---h = [(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])]
---head (getCadena 20 (last x) (tail (lineBreaks2 h 20 ([Word (head (words (head y)))]))))
-
---[HypWord "con", Word "trola"]
-
---ultima = "futuro. Quien"
---palabra1 = con
---palabra2 = trola
-
---a = [ "Quien controla el","pasado controla el","futuro. Quien","controla el presente","controla el pasado."]
-
---y="controla el presente"
-
---head $ getFirtsWord h num y
---HypWord "con"
---line2string [head $ getFirtsWord h num y]
---"con-"
-
--- init (x)++[ultima++" "++palabra1++"-"]++ [palabra2++" "++(foldl (\o p -> if o /= [] then  o++" "++p else p) [] (tail (words y)))]
-
---foldl (\x y -> if x == [] then y else x++[y]) [] a
-
---((init (x))++[ultima++" "++palabra1++"-"])++[palabra2++" "++(foldl (\o p -> if o /= [] then  o++" "++p else p) [] (tail (words (head y))))]
-
---(["Quien controla el","pasado controla el", "futuro. Quien con-"])++["trola el presente"]
-
---x= [ "Quien controla el",
--- "pasado controla el",
--- "futuro. Quien"]
---y= "controla el presente"
-
--- ["el","presente"]
--- ... ++ ["futuro. Quien con-"] ++ ["trola el presente"]
-
---y=["controla el presente"]
---num=20
---h=[(Word "controla",["con","tro","la"]),(Word "futuro",["fu","tu","ro"])] 
---ultima = "futuro. Quien"
-
-
-
---(line2string [(head (head (getCadena num ultima (tail (lineBreaks2 h num ([Word (head (words (head y)))]))))))])
---(line2string [(head (head (getCadena num ultima (tail (lineBreaks2 h num [Word "controla"])))))])
---(line2string [(head (head (getCadena num ultima [([HypWord "con",Word "trola"],[]),([HypWord "contro",Word "la"],[])]))))])
---(line2string [(head [[HypWord "con",Word "trola"]])])
---"con-"
-
---(line2string [(last (head [[HypWord "con",Word "trola"]]))])
---"trola"
-
---[(foldl (\x y -> x++y) [] w1)++w2]
-
---(init x)++[(ultima++" "++palabra1)]++[(head (tail (words (head y))))]
---ultima++".."++palabra1++".."++palabra2++".."++largototal
-
---foldl (\x y -> x++".."++y) [] ["Quien controla el pasado","controla el futuro. Quien","controla el presente controla","el pasado."]
-
---combinarCadenas ((init x)++ultima++palabra1):combinarCadenas(palabra2++(tail y)):[]
---combinarCadenas :: [Char] -> [String]
---combinarCadenas w = map (\x xs -> x:xs ) w
-
---w = "futuro. Quien"
---cadena = [([HypWord "con",Word "trola"],[]),([HypWord "contro",Word "la"],[])]
---foldl (\x y -> let (a,b)=(y) ph=(init a) pw=(tail a) largototal=((length w)+(length ph)+1) (m,n,k)=(x) in if largototal<=num && k==0 then (ph,pw,k+1) else x ) ([],[],0) cadena
-
-
-
-------------------------------------------------------------------------------------
-
