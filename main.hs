@@ -61,7 +61,8 @@ mainloop estado = do
                     let separar = (tokens!!2)
                     let ajustar = (tokens!!3)
                     let texto = (foldl (\x y -> if x /= "" then x++" "++y else y) "" (tail (tail (tail (tail tokens)))))
-                    let salida = splitWords longitud separar ajustar texto
+                    let hp = convertEstado estado
+                    let salida = splitWords hp longitud separar ajustar texto
                     putStrLn salida
                     mainloop estado
 
@@ -75,7 +76,8 @@ mainloop estado = do
                     cadenatexto <- hGetLine inh
                     hClose inh
 
-                    let salida = splitWords longitud separar ajustar cadenatexto
+                    let hp = convertEstado estado
+                    let salida = splitWords hp longitud separar ajustar cadenatexto
                     putStrLn salida
 
                     let tamano = length tokens
@@ -123,7 +125,7 @@ mainloop estado = do
                             mainloop estado
                         else mainloop estado
 
-        "exit" -> do
+        "fin" -> do
                     putStrLn "Saliento..."
         _      -> do
                     putStrLn $ "Comando desconocido ("++ comando ++"): '" ++ inpStr ++ "'" 
@@ -162,8 +164,8 @@ splitWords2 hp longitud separar ajustar texto = let result = separarYalinear2 hp
 descargar2 outh [] = return ()
 descargar2 outh (kvs) = do hPutStrLn outh kvs
 
-splitWords :: Int -> String -> String -> String -> String
-splitWords longitud separar ajustar texto = let result = separarYalinear longitud separar ajustar texto
+splitWords :: HypMap -> Int -> String -> String -> String -> String
+splitWords hp longitud separar ajustar texto = let result = separarYalinear hp longitud separar ajustar texto
                                             in
                                             foldl (\x y -> if x /= "" then x++"\n"++y else y) "" result 
 
@@ -341,13 +343,19 @@ convertStringToken lista w = lista++[w]++[Blank]
 -- "controla el presente",
 -- "controla el pasado."]
 
-separarYalinear :: Int -> String -> String -> String -> [String]
-separarYalinear num noseparar noajustar w = if noseparar /= "" && noajustar /= "" 
-                                                then if noseparar == "NOSEPARAR" && noajustar == "NOAJUSTAR"
+separarYalinear :: HypMap -> Int -> String -> String -> String -> [String]
+separarYalinear hm num noseparar noajustar w = if noseparar /= "" && noajustar /= "" 
+                                                then if noseparar == "n" && noajustar == "n"
                                                     then getLinePrimeraCorrida(breakLine num (string2line w)) num
-                                                    else if noseparar == "NOSEPARAR" && noajustar == "AJUSTAR"
+                                                    else if noseparar == "n" && noajustar == "s"
                                                         then getLinePrimeraCorrida3(breakLine num (string2line w)) num
-                                                        else []
+                                                        else if noseparar == "s" && noajustar == "n"
+                                                            then getResultFinal hm num (getLinePrimeraCorrida (breakLine (num) (string2line w)) num)
+                                                            else if noseparar == "s" && noajustar == "s"
+                                                                then let texto = foldl (\x y -> if x == "" then y else x++" "++y) "" (getResultFinal hm num (getLinePrimeraCorrida (breakLine (num) (string2line w)) num))
+                                                                    in
+                                                                    getLinePrimeraCorrida3(breakLine num (string2line texto)) num
+                                                                else []
                                                 else []
 
 getLinePrimeraCorrida :: (Line,Line) -> Int-> [String]
@@ -370,7 +378,7 @@ getLinePrimeraCorrida w n = let (a,b) = w in if b /= []
 -- "controla el presente",
 -- "controla  el pasado."]
 separarYalinear3 :: Int -> String -> String -> String -> [String]
-separarYalinear3 num noseparar noajustar w = if noseparar == "NOSEPARAR" && noajustar == "AJUSTAR"
+separarYalinear3 num noseparar noajustar w = if noseparar == "n" && noajustar == "s"
                                                 then getLinePrimeraCorrida3(breakLine num (string2line w)) num
                                                 else []
 
@@ -404,9 +412,9 @@ getLinePrimeraCorrida3 w n = let (a,b) = w
 --"controla el pasado."]
 
 separarYalinear2 :: HypMap -> Int -> String -> String -> String -> [String]
-separarYalinear2 hm num noseparar noajustar w = if noseparar == "SEPARAR" && noajustar == "NOAJUSTAR"
+separarYalinear2 hm num noseparar noajustar w = if noseparar == "s" && noajustar == "n"
                                                 then getResultFinal hm num (getLinePrimeraCorrida (breakLine (num) (string2line w)) num)
-                                                else if noseparar == "SEPARAR" && noajustar == "AJUSTAR"
+                                                else if noseparar == "s" && noajustar == "s"
                                                     then let texto = foldl (\x y -> if x == "" then y else x++" "++y) "" (getResultFinal hm num (getLinePrimeraCorrida (breakLine (num) (string2line w)) num))
                                                         in
                                                         getLinePrimeraCorrida3(breakLine num (string2line texto)) num
@@ -466,7 +474,7 @@ separarYalinear4 hm num noseparar noajustar w = let texto = foldl (\x y -> if x 
                                                                                 then y
                                                                                 else x++" "++y) "" (getResultFinal hm num (getLinePrimeraCorrida (breakLine (num) (string2line w)) num))
                                                 in
-                                                if noseparar == "SEPARAR" && noajustar == "AJUSTAR"
+                                                if noseparar == "s" && noajustar == "s"
                                                     then getLinePrimeraCorrida3(breakLine num (string2line texto)) num
                                                     else []
 
